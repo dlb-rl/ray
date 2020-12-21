@@ -16,7 +16,7 @@ class WeightedImportanceSamplingEstimator(OffPolicyEstimator):
         self.filter_counts = []
 
     @override(OffPolicyEstimator)
-    def estimate(self, batch: SampleBatchType) -> OffPolicyEstimate:
+    def estimate(self, batch: SampleBatchType, reward_shift: float) -> OffPolicyEstimate:
         self.check_can_estimate_for(batch)
 
         rewards, old_prob = batch["rewards"], batch["action_prob"]
@@ -41,9 +41,14 @@ class WeightedImportanceSamplingEstimator(OffPolicyEstimator):
         # calculate stepwise weighted IS estimate
         V_prev, V_step_WIS = 0.0, 0.0
         for t in range(batch.count - 1):
-            V_prev += rewards[t] * self.gamma**t
+            reward = rewards[t] + reward_shift
+            V_prev += reward * self.gamma**t
             w_t = self.filter_values[t] / self.filter_counts[t]
-            V_step_WIS += p[t] / w_t * rewards[t] * self.gamma**t
+            V_step_WIS += p[t] / w_t * reward * self.gamma**t
+
+        if batch.count == 1:
+            V_prev = rewards[0] + reward_shift
+            V_step_WIS = (new_prob[0] / old_prob[0]) * V_prev
 
         estimation = OffPolicyEstimate(
             "wis", {

@@ -10,7 +10,7 @@ class ImportanceSamplingEstimator(OffPolicyEstimator):
     Step-wise IS estimator described in https://arxiv.org/pdf/1511.03722.pdf"""
 
     @override(OffPolicyEstimator)
-    def estimate(self, batch: SampleBatchType, reward_shift: float) -> OffPolicyEstimate:
+    def estimate(self, batch: SampleBatchType, reward_shift=0) -> OffPolicyEstimate:
         self.check_can_estimate_for(batch)
 
         rewards, old_prob = batch["rewards"], batch["action_prob"]
@@ -31,10 +31,6 @@ class ImportanceSamplingEstimator(OffPolicyEstimator):
             reward = rewards[t] + reward_shift
             V_prev += reward * self.gamma**t
             V_step_IS += p[t] * reward * self.gamma**t
-
-        if batch.count == 1:
-            V_prev = rewards[0] + reward_shift
-            V_step_IS = (new_prob[0] / old_prob[0]) * V_prev
 
         estimation = OffPolicyEstimate(
             "is", {
